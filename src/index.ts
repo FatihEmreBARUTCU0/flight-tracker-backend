@@ -1,13 +1,22 @@
-import express from "express";
+import "dotenv/config";
+import http from "http";
+import { Server } from "socket.io";
+import app from "./app";
+import { connectDB } from "./config/db";
 
-const app = express();
 const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
 
-app.use(express.json());
+export const io = new Server(server, { cors: { origin: "*" }, path: "/ws" });
 
-app.get("/health", (_req, res) => res.json({ ok: true }));
-app.get("/", (_req, res) => res.send("Node.js + TypeScript + Express 🚀"));
-
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+io.on("connection", (socket) => {
+  console.log("🔌 client connected:", socket.id);
+  socket.emit("welcome", { msg: "hello" });
+  socket.on("ping", () => socket.emit("pong"));
+  socket.on("disconnect", () => console.log("❌ disconnected:", socket.id));
 });
+
+(async () => {
+  await connectDB(process.env.MONGODB_URI!);
+  server.listen(PORT, () => console.log(`🚀 HTTP+WS on :${PORT}`));
+})();
