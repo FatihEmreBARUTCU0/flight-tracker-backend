@@ -1,11 +1,18 @@
 import mongoose from "mongoose";
 
+
 export async function connectDB(uri: string) {
-  try {
-    await mongoose.connect(uri);
-    console.log("✅ MongoDB connected");
-  } catch (err) {
-    console.error("❌ MongoDB connection error:", err);
-    process.exit(1);
-  }
+  if (!uri) throw new Error("connectDB: uri is required");
+  await mongoose.connect(uri);
+
+  mongoose.connection.on("error", (err) => {
+    console.error("[db] connection error:", err);
+  });
+  console.log("[db] connected");
+}
+
+
+export async function disconnectDB() {
+  await mongoose.disconnect();
+  console.log("[db] disconnected");
 }
