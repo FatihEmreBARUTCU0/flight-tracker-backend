@@ -4,6 +4,9 @@ import app from "./app";
 import { connectDB, disconnectDB } from "./config/db";
 import expressWs from "express-ws";
 import { mountWs } from "./ws";
+import Flight from "./config/models/flight";
+import Telemetry from "./config/models/telemetry";
+import { startSimForFlight, shutdownRealtime } from "./realtime";
 
 async function main() {
   const uri = process.env.MONGODB_URI;
@@ -11,30 +14,60 @@ async function main() {
 
   const port = Number(process.env.PORT ?? 3000);
 
+  // 1. DB'ye bağlan
   await connectDB(uri);
 
-  // Model burada ve FONKSİYON içinde import ediliyor (top-level await yok)
-  const Flight = (await import("./config/models/flight")).default;
+  // 2. indexleri hazırla
   await Flight.init();
-  console.log("[db] Flight indexes in sync");
+  await Telemetry.init();
+  console.log("[db] Flight & Telemetry indexes in sync");
 
+  // 3. express-ws + server
   const server = http.createServer(app);
   expressWs(app as any, server);
   mountWs(app as any);
 
+  // 4. var olan uçuşlar için sim başlat
+  const existing = await Flight.find().lean();
+  for (const f of existing) {
+    startSimForFlight(f);
+  }
+
+  // 5. dinle
   server.listen(port, () => {
     console.log(`[server] listening on http://localhost:${port}`);
+    console.log(`[ws]     ws://localhost:${port}/ws`);
   });
 
+  // graceful shutdown
   const shutdown = async (reason?: string) => {
     if (reason) console.warn(`[server] shutdown (${reason})`);
-    const t = setTimeout(() => { console.warn("[server] forced shutdown after 10s"); process.exit(1); }, 10_000);
-    server.close(async () => { clearTimeout(t); try { await disconnectDB(); } catch {} process.exit(0); });
+    const t = setTimeout(() => {
+      console.warn("[server] forced shutdown after 10s");
+      process.exit(1);
+    }, 10_000);
+
+    server.close(async () => {
+      clearTimeout(t);
+      try { await shutdownRealtime(); } catch {}
+      try { await disconnectDB(); } catch {}
+      process.exit(0);
+    });
   };
+
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));
-  process.on("unhandledRejection", (e) => { console.error(e); shutdown("unhandledRejection"); });
-  process.on("uncaughtException",  (e) => { console.error(e); shutdown("uncaughtException"); });
+  process.on("unhandledRejection", (e) => {
+    console.error(e);
+    shutdown("unhandledRejection");
+  });
+  process.on("uncaughtException", (e) => {
+    console.error(e);
+    shutdown("uncaughtException");
+  });
 }
 
-main().catch((err) => { console.error("[bootstrap] failed:", err); process.exit(1); });
+main().catch((err) => {
+  console.error("[bootstrap] failed:", err);
+  process.exit(1);
+});

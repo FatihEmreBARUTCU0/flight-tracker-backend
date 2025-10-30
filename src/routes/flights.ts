@@ -1,24 +1,24 @@
 import { Router } from "express";
 import Flight from "../config/models/flight";
+import { broadcast, startSimForFlight } from "../realtime";
 
 const router = Router();
 
 /**
- * @swagger
+ * @openapi
  * /flights:
  *   get:
- *     summary: Tüm uçuşları listele
- *     tags:
- *       - Flights
+ *     summary: List all flights
+ *     tags: [Flights]
  *     responses:
  *       200:
- *         description: Uçuş listesi
+ *         description: Array of flights
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: "#/components/schemas/Flight"
+ *                 $ref: '#/components/schemas/Flight'
  */
 router.get("/", async (_req, res, next) => {
   try {
@@ -30,12 +30,11 @@ router.get("/", async (_req, res, next) => {
 });
 
 /**
- * @swagger
+ * @openapi
  * /flights:
  *   post:
- *     summary: Yeni uçuş oluştur
- *     tags:
- *       - Flights
+ *     summary: Create a new flight
+ *     tags: [Flights]
  *     requestBody:
  *       required: true
  *       content:
@@ -50,36 +49,23 @@ router.get("/", async (_req, res, next) => {
  *               - destination_long
  *               - departureTime
  *             properties:
- *               flightCode:
- *                 type: string
- *                 example: "TK123"
- *               departure_lat:
- *                 type: number
- *                 example: 41.2753
- *               departure_long:
- *                 type: number
- *                 example: 28.7519
- *               destination_lat:
- *                 type: number
- *                 example: 40.9778
- *               destination_long:
- *                 type: number
- *                 example: 28.821
- *               departureTime:
- *                 type: string
- *                 format: date-time
- *                 example: "2025-10-26T09:30:00.000Z"
+ *               flightCode: { type: string }
+ *               departure_lat: { type: number }
+ *               departure_long:{ type: number }
+ *               destination_lat:{ type: number }
+ *               destination_long:{ type: number }
+ *               departureTime: { type: string, format: date-time }
  *     responses:
  *       201:
- *         description: Oluşturuldu
+ *         description: Created flight
  *         content:
  *           application/json:
  *             schema:
- *               $ref: "#/components/schemas/Flight"
+ *               $ref: '#/components/schemas/Flight'
  *       400:
- *         description: Eksik alan
+ *         description: Missing required fields
  *       409:
- *         description: flightCode zaten var
+ *         description: flightCode already exists
  */
 router.post("/", async (req, res, next) => {
   try {
@@ -112,12 +98,13 @@ router.post("/", async (req, res, next) => {
       departureTime: new Date(departureTime),
     });
 
+    broadcast({ type: "flight.created", flight: doc.toObject() });
+    startSimForFlight(doc);
+
     res.status(201).json(doc);
   } catch (err: any) {
     if (err?.code === 11000) {
-      return res
-        .status(409)
-        .json({ error: "flightCode already exists" });
+      return res.status(409).json({ error: "flightCode already exists" });
     }
     next(err);
   }

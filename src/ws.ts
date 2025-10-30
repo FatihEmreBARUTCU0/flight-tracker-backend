@@ -1,21 +1,13 @@
 // src/ws.ts
-import type { Application } from "express-ws";
+import type { Application } from "express";
+import type { WebSocket } from "ws";
+import { registerClient } from "./realtime";
 
-/** WebSocket endpoint'lerini burada tanımla */
+/** Express uygulamasına /ws websocket endpoint’ini ekler */
 export function mountWs(app: Application) {
-  // ws endpoint: ws://<host>/ws
-  app.ws("/ws", (ws, req) => {
-    // ilk karşılama
-    ws.send(JSON.stringify({ type: "welcome", msg: "connected" }));
-
-    // client'tan mesaj gelirse
-    ws.on("message", (data) => {
-      // geleni basitçe geri yolla (echo)
-      ws.send(JSON.stringify({ type: "echo", data: String(data) }));
-    });
-
-    ws.on("close", () => {
-      
-    });
+  // TS için any: express-ws app.ws ekler
+  (app as any).ws("/ws", (ws: WebSocket) => {
+    registerClient(ws);                 // bağlantıyı kaydet
+    ws.send(JSON.stringify({ type: "hello", ok: true })); // opsiyonel selam
   });
 }
