@@ -1,6 +1,6 @@
 import Telemetry from "./config/models/telemetry";
 import { Types } from "mongoose";
-import type { WebSocket } from "ws";
+import { WebSocket } from "ws";
 
 // --- Types ---
 type FlightLike = {
@@ -26,15 +26,9 @@ export function registerClient(ws: WebSocket) {
 
 export function broadcast(msg: any) {
   const data = JSON.stringify(msg);
-  // In `ws` (npm), OPEN === 1. We avoid importing the runtime class and rely on numeric value.
-  const WS_STATE_OPEN = 1 as const;
   for (const socket of clients) {
-    if ((socket as any).readyState === WS_STATE_OPEN) {
-      try {
-        (socket as any).send(data);
-      } catch (err) {
-        // best-effort; drop on failure
-      }
+    if (socket.readyState === WebSocket.OPEN) {  
+      try { socket.send(data); } catch {}
     }
   }
 }

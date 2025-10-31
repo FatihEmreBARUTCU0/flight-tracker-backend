@@ -1,6 +1,7 @@
 import { Router } from "express";
 import Flight from "../config/models/flight";
 import { broadcast, startSimForFlight } from "../realtime";
+function inRange(n: number, min: number, max: number) { return typeof n === "number" && n >= min && n <= max; }
 
 const router = Router();
 
@@ -89,13 +90,27 @@ router.post("/", async (req, res, next) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    // Koordinat ve zaman doğrulaması
+    if (
+      !inRange(departure_lat, -90, 90) ||
+      !inRange(destination_lat, -90, 90) ||
+      !inRange(departure_long, -180, 180) ||
+      !inRange(destination_long, -180, 180)
+    ) {
+      return res.status(400).json({ error: "Invalid coordinates" });
+    }
+    const dt = new Date(departureTime);
+    if (Number.isNaN(dt.getTime())) {
+      return res.status(400).json({ error: "Invalid departureTime" });
+    }
+
     const doc = await Flight.create({
       flightCode,
       departure_lat,
       departure_long,
       destination_lat,
       destination_long,
-      departureTime: new Date(departureTime),
+      departureTime: dt,
     });
 
     broadcast({ type: "flight.created", flight: doc.toObject() });

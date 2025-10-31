@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import flightsRouter from "./routes/flights";
@@ -7,7 +8,9 @@ import telemetryRouter from "./routes/telemetry";
 
 const app = express();
 
-app.use(cors());
+const allowed = (process.env.ALLOWED_ORIGINS ?? "*").split(",");
+app.use(cors({ origin: allowed.length === 1 && allowed[0] === "*" ? "*" : allowed }));
+app.use(rateLimit({ windowMs: 60_000, max: 600 }));
 app.use(express.json());
 
 // health
@@ -20,12 +23,21 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/flights", flightsRouter);
 
 app.use("/telemetry", telemetryRouter);
-// basit error handler
-app.use((err: any, _req: any, res: any, _next: any) => {
-  console.error(err);
-  res
-    .status(err?.status || 500)
-    .json({ error: err?.message || "Internal Server Error" });
+
+// tutarlı error handler
+const isProd = process.env.NODE_ENV === "production";
+app.use((err: any, req: any, res: any, _next: any) => {
+  const status = Number(err?.status) || 500;
+  const code =
+    err?.code ||
+    (status === 400 ? "BAD_REQUEST" : status === 404 ? "NOT_FOUND" : "INTERNAL");
+  const body: any = {
+    error: err?.message || "Internal Server Error",
+    code,
+  };
+  if (!isProd && err?.stack) body.stack = err.stack;
+  console.error(`[${req.method} ${req.url}] ${status}`, err?.message);
+  res.status(status).json(body);
 });
 
 export default app;

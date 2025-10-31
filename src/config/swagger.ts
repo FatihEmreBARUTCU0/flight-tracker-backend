@@ -1,11 +1,13 @@
 // src/config/swagger.ts
 import swaggerJsdoc from "swagger-jsdoc";
 
+const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
+
 export const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: "3.1.0",
     info: { title: "Flight Tracker API", version: "1.0.0" },
-    servers: [{ url: "http://localhost:3000" }],
+    servers: [{ url: serverUrl }],
     tags: [
       { name: "Flights" },
       { name: "Telemetry" }
@@ -56,12 +58,12 @@ export const swaggerSpec = swaggerJsdoc({
           properties: {
             flightId: { type: "string" },
             flightCode: { type: "string" },
-            lat: { type: "number" },
-            lng: { type: "number" },
+            lat: { type: "number", minimum: -90, maximum: 90 },
+            lng: { type: "number", minimum: -180, maximum: 180 },
             ts:  {
               type: "string",
               format: "date-time",
-              description: "opsiyonel; default=now()"
+              description: "ISO date-time; optional, default=now()"
             }
           }
         }
