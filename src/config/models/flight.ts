@@ -2,7 +2,7 @@ import { Schema, model, InferSchemaType } from "mongoose";
 
 const flightSchema = new Schema(
   {
-    flightCode: { type: String, required: true, unique: true }, // unique = index
+    flightCode: { type: String, required: true, unique: true }, 
     departure_lat: { type: Number, required: true },
     departure_long: { type: Number, required: true },
     destination_lat: { type: Number, required: true },

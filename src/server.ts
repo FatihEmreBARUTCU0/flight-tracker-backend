@@ -14,32 +14,32 @@ async function main() {
 
   const port = Number(process.env.PORT ?? 3000);
 
-  // 1. DB'ye bağlan
+
   await connectDB(uri);
 
-  // 2. indexleri hazırla
+
   await Flight.init();
   await Telemetry.init();
   console.log("[db] Flight & Telemetry indexes in sync");
 
-  // 3. express-ws + server
+
   const server = http.createServer(app);
   expressWs(app as any, server);
   mountWs(app as any);
 
-  // 4. var olan uçuşlar için sim başlat
+  
   const existing = await Flight.find().lean();
   if (process.env.AUTO_SIM === "1") {
     for (const f of existing) startSimForFlight(f);
   } 
 
-  // 5. dinle
+
   server.listen(port, () => {
     console.log(`[server] listening on http://localhost:${port}`);
     console.log(`[ws]     ws://localhost:${port}/ws`);
   });
 
-  // graceful shutdown
+
   const shutdown = async (reason?: string) => {
     if (reason) console.warn(`[server] shutdown (${reason})`);
     const t = setTimeout(() => {

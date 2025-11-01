@@ -94,7 +94,7 @@ router.post("/", async (req, res, next) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Koordinat ve zaman doğrulaması
+   
     if (
       !inRange(departure_lat, -90, 90) ||
       !inRange(destination_lat, -90, 90) ||
@@ -120,7 +120,7 @@ router.post("/", async (req, res, next) => {
 
     broadcast({ type: "flight.created", flight: doc.toObject() });
 
-    // Yalnızca açıkça izin verilmişse dahili sim başlasın
+    
     if (AUTO_SIM) {
       startSimForFlight(doc);
     }

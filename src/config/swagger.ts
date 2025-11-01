@@ -1,4 +1,3 @@
-// src/config/swagger.ts
 import swaggerJsdoc from "swagger-jsdoc";
 
 const serverUrl = process.env.SERVER_URL ?? "http://localhost:3000";
@@ -39,7 +38,7 @@ export const swaggerSpec = swaggerJsdoc({
           }
         },
 
-        // >>> Eklediğin şemalar
+        
         Telemetry: {
           type: "object",
           properties: {
@@ -67,10 +66,10 @@ export const swaggerSpec = swaggerJsdoc({
             }
           }
         }
-        // <<<
+        
       }
     }
   },
-  // routes klasörünü ve gerekirse app.ts'i tarar
+  
   apis: ["./src/routes/**/*.ts", "./src/app.ts"],
 });

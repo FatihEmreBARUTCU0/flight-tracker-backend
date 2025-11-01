@@ -2,7 +2,7 @@ import Telemetry from "./config/models/telemetry";
 import { Types } from "mongoose";
 import { WebSocket } from "ws";
 
-// --- Types ---
+
 type FlightLike = {
   _id: any;
   flightCode: string;
@@ -15,12 +15,12 @@ type FlightLike = {
 
 type BufferItem = { flight: any; lat: number; lng: number; ts: Date };
 
-// --- WS client management ---
+
 const clients = new Set<WebSocket>();
 
 export function registerClient(ws: WebSocket) {
   clients.add(ws);
-  // Cleanup on close
+  
   (ws as any).on("close", () => clients.delete(ws));
 }
 
@@ -49,15 +49,14 @@ function interp(
   return { lat: lerp(A.lat, B.lat, t), lng: lerp(A.lng, B.lng, t) };
 }
 
-/* -------------------- DB yazımı: buffer/batch + seyreltme ------------------- */
-// flightId -> pending rows
+
 const buffers = new Map<string, BufferItem[]>();
 
-// 200ms * 5 = ~1 Hz yaz (istersen 1,2,... diye değiştir)
+
 const WRITE_EVERY_N = 5;
-// en geç her şu kadar ms'de flush et
+
 const FLUSH_MS = 1000;
-// tek seferde şu kadarını yaz
+
 const BATCH_SIZE = 200;
 
 let flushingAll = false;
@@ -80,7 +79,7 @@ async function flushAllBuffers() {
   }
 }
 
-// sim döngüsünden bağımsız periyodik flush
+
 const FLUSH_TIMER = setInterval(() => {
   void flushAllBuffers();
 }, FLUSH_MS);
@@ -105,24 +104,24 @@ async function flushFlightBuffer(flightId: string) {
   }
 }
 
-/* ---------------------------------- SIM ------------------------------------ */
+
 export function startSimForFlight(
   f: FlightLike,
   periodMs = 200,
   step = 0.01
 ) {
   const id = String(f._id);
-  if (timers.has(id)) return; // zaten çalışıyor
+  if (timers.has(id)) return; 
 
   const A = { lat: f.departure_lat, lng: f.departure_long };
   const B = { lat: f.destination_lat, lng: f.destination_long };
 
   phases.set(id, 0);
 
-  // DB tarafı: ObjectId uygunsa kullan
+
   const flightObjId = Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : id;
 
-  // buffer hazırla
+
   buffers.set(id, buffers.get(id) ?? []);
 
   let tick = 0;
@@ -133,11 +132,11 @@ export function startSimForFlight(
 
     const p = interp(A, B, t);
 
-    // Aynı timestamp'i WS ve DB için kullan
+
     const tsDate = new Date();
     const tsMs = tsDate.getTime();
 
-    // WS yayın
+  
     broadcast({
       type: "telemetry",
       flightId: id,
@@ -146,7 +145,7 @@ export function startSimForFlight(
       ts: tsMs,
     });
 
-    // DB: her n’inci ölçümü yaz (seyreltme)
+    
     if (tick++ % WRITE_EVERY_N === 0) {
       pushTelemetryBuffered(id, {
         flight: flightObjId,
@@ -165,12 +164,12 @@ export function stopSimForFlight(id: string) {
   if (t !== undefined) clearInterval(t);
   timers.delete(id);
   phases.delete(id);
-  // varsa kalan buffer'ı arkadan flush et
+
   void flushFlightBuffer(id);
   buffers.delete(id);
 }
 
-/* ----------------------- Temiz kapanış / yardımcılar ----------------------- */
+
 export function stopAllSims() {
   for (const id of Array.from(timers.keys())) stopSimForFlight(id);
 }
@@ -178,5 +177,5 @@ export function stopAllSims() {
 export async function shutdownRealtime() {
   clearInterval(FLUSH_TIMER);
   stopAllSims();
-  await flushAllBuffers(); // kalanları yaz
+  await flushAllBuffers(); 
 }

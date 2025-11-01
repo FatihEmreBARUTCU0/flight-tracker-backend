@@ -1,9 +1,8 @@
-// backend/src/routes/telemetry.ts
 import { Router } from "express";
 import Flight from "../config/models/flight";
 import Telemetry from "../config/models/telemetry";
 import { broadcast } from "../realtime";
-import { Types } from "mongoose"; // <-- eklendi
+import { Types } from "mongoose"; 
 
 const router = Router();
 
@@ -30,12 +29,12 @@ const router = Router();
  *       404:
  *         description: Geçerli kayıt yok
  */
-// 4) Batch flight lookup + kısmi başarı
+
 router.post("/", async (req, res, next) => {
   try {
     const payload = Array.isArray(req.body) ? req.body : [req.body];
 
-    // basic validation
+   
     for (const p of payload) {
       if ((p.flightId == null && p.flightCode == null) || p.lat == null || p.lng == null) {
         return res.status(400).json({ error: "flightId/flightCode ve lat,lng zorunlu" });
@@ -48,7 +47,7 @@ router.post("/", async (req, res, next) => {
       }
     }
 
-    // batch resolve flights (tek seferde)
+
     const byId = payload.filter((p) => p.flightId).map((p) => String(p.flightId));
     const byCode = payload.filter((p) => p.flightCode).map((p) => String(p.flightCode));
 
@@ -85,7 +84,7 @@ router.post("/", async (req, res, next) => {
       return res.status(404).json({ error: "No valid items", failed });
     }
 
-    // Kısmi eklemelerde insertedDocs'i güvenle yakala
+    
     let insertedDocs: any[] = [];
     try {
       const r = await Telemetry.insertMany(docs, { ordered: false });
@@ -94,10 +93,10 @@ router.post("/", async (req, res, next) => {
       if (Array.isArray(e?.insertedDocs)) {
         insertedDocs = e.insertedDocs;
       }
-      // diğer hataları yutuyoruz; kısmi başarı yine de raporlanacak
+      
     }
 
-    // Yalnızca gerçekten kalıcı olanları yayınla
+    
     for (const d of insertedDocs) {
       broadcast({
         type: "telemetry",
@@ -152,7 +151,7 @@ router.get("/", async (req, res, next) => {
 
     if (!flight) return res.status(404).json({ error: "Flight not found" });
 
-    // ISO doğrulama
+   
     let fromDate: Date | undefined;
     let toDate: Date | undefined;
 
@@ -261,7 +260,6 @@ router.get("/window", async (req, res, next) => {
 
     const match: any = { ts: { $lte: at } };
     if (ids && ids.length) {
-      // Sadece gerçekten var olan uçuşları dikkate al
       const flights = await Flight.find({ _id: { $in: ids } }, { _id: 1 }).lean();
       const validIds = flights.map((f) => f._id);
       if (validIds.length === 0) {
@@ -329,14 +327,14 @@ router.get("/nearest", async (req, res, next) => {
 
     if (!ids.length) return res.status(400).json({ error: "No valid flightIds" });
 
-    // prev: ts <= at (en yakın geçmiş)
+    
     const prevAgg = await Telemetry.aggregate([
       { $match: { flight: { $in: ids }, ts: { $lte: at } } },
       { $sort: { ts: -1 } },
       { $group: { _id: "$flight", doc: { $first: "$$ROOT" } } },
     ]);
 
-    // next: ts >= at (en yakın gelecek)
+    
     const nextAgg = await Telemetry.aggregate([
       { $match: { flight: { $in: ids }, ts: { $gte: at } } },
       { $sort: { ts: 1 } },
