@@ -1,8 +1,12 @@
 import { Router } from "express";
 import Flight from "../config/models/flight";
 import { broadcast, startSimForFlight } from "../realtime";
-function inRange(n: number, min: number, max: number) { return typeof n === "number" && n >= min && n <= max; }
 
+function inRange(n: number, min: number, max: number) {
+  return typeof n === "number" && n >= min && n <= max;
+}
+
+const AUTO_SIM = process.env.AUTO_SIM === "1";
 const router = Router();
 
 /**
@@ -37,7 +41,7 @@ router.get("/", async (_req, res, next) => {
  *     summary: Create a new flight
  *     tags: [Flights]
  *     requestBody:
- *       required: true
+ *       required: true;
  *       content:
  *         application/json:
  *           schema:
@@ -99,6 +103,7 @@ router.post("/", async (req, res, next) => {
     ) {
       return res.status(400).json({ error: "Invalid coordinates" });
     }
+
     const dt = new Date(departureTime);
     if (Number.isNaN(dt.getTime())) {
       return res.status(400).json({ error: "Invalid departureTime" });
@@ -114,7 +119,11 @@ router.post("/", async (req, res, next) => {
     });
 
     broadcast({ type: "flight.created", flight: doc.toObject() });
-    startSimForFlight(doc);
+
+    // Yalnızca açıkça izin verilmişse dahili sim başlasın
+    if (AUTO_SIM) {
+      startSimForFlight(doc);
+    }
 
     res.status(201).json(doc);
   } catch (err: any) {

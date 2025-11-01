@@ -8,8 +8,16 @@ import telemetryRouter from "./routes/telemetry";
 
 const app = express();
 
-const allowed = (process.env.ALLOWED_ORIGINS ?? "*").split(",");
-app.use(cors({ origin: allowed.length === 1 && allowed[0] === "*" ? "*" : allowed }));
+// Varsayılanı daralt: dev'de Vite origin'i, prod'da env ile açıkça verilmeli
+const defaultOrigin = "http://localhost:5173";
+const allowed = (process.env.ALLOWED_ORIGINS ?? defaultOrigin)
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+// '*' gelirse bile default'a düş; prod için ALLOWED_ORIGINS açıkça set edilmeli
+const origin = (allowed.length === 1 && allowed[0] === "*") ? defaultOrigin : allowed;
+app.use(cors({ origin }));
+
 app.use(rateLimit({ windowMs: 60_000, max: 600 }));
 app.use(express.json());
 

@@ -29,9 +29,9 @@ async function main() {
 
   // 4. var olan uçuşlar için sim başlat
   const existing = await Flight.find().lean();
-  for (const f of existing) {
-    startSimForFlight(f);
-  }
+  if (process.env.AUTO_SIM === "1") {
+    for (const f of existing) startSimForFlight(f);
+  } 
 
   // 5. dinle
   server.listen(port, () => {
