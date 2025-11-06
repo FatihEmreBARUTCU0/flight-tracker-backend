@@ -1,28 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Socket Test</title>
-  </head>
-  <body>
-    <h2>WebSocket Test Page</h2>
-    <p>Check console (F12)</p>
-
-    <!-- ⚡ CDN'den Socket.IO istemcisi -->
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-
-    <script>
-      // Sunucudaki WebSocket'e bağlan
-      const socket = io("http://localhost:3000", { path: "/ws" });
-
-      // Bağlantı açıldığında logla
-      socket.on("connect", () => console.log("✅ Connected:", socket.id));
-
-      // Sunucudan gelen 'welcome' mesajını yakala
-      socket.on("welcome", (data) => console.log("📩 Message:", data));
-
-      // Basit ping-pong testi
-      socket.emit("ping");
-    </script>
-  </body>
+<html lang="tr">
+<head><meta charset="UTF-8"><title>WS Test</title></head>
+<body>
+  <h2>WebSocket Test</h2>
+  <script>
+    const ws = new WebSocket("ws://localhost:3000/ws");
+    ws.onopen    = () => console.log("✅ WS open");
+    ws.onmessage = (e) => console.log("📩", e.data);
+    ws.onclose   = () => console.log("❌ WS closed");
+    ws.onerror   = (e) => console.log("⚠️ WS error", e);
+  </script>
+</body>
 </html>
